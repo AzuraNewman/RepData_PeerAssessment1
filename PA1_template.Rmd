@@ -1,25 +1,175 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Course project 1"
+author: "Azura Newman"
+date: "March 12, 2017"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## Course project 1
+
+###Loading and Preprocessing the data.
+
+The following analysis was done using data collected form a personal activity monitoring device used during October and November, 2012.  The data was collected in 5 minute intervals.
+
+First the data was downloaded and loaded into R.
+
+```{r download and import data, echo = TRUE}
+rm(list = ls())
+
+
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",destfile = "factivity.zip")
+
+unzip("factivity.zip")
+
+
+activity<-read.csv("activity.csv",na.strings = "NA")
+
+activity$date<-as.Date(activity$date,"%Y-%m-%d")
+
+```
+
+###Finding the mean number of steps per day.
+
+Then The total number of steps per day was calclulated.  This calculationwas done with out considering days that had NULL values.
+
+```{r 1. total number of steps per day, echo = TRUE}
+sumperday<-tapply(activity$steps,activity$date,sum)
+
+```
+
+You can see a histogram below of the total number of steps per day.
+
+```{r 2. histogram of total steps per day, echo = TRUE}
+hist(sumperday, main = "Total Steps per day",xlab = "Total Steps")
+
+```
+
+The mean and median number of steps per day werethen calculated.
+
+Mean:
+
+```{r 3. mean steps per day, echo = TRUE}
+mean(sumperday, na.rm = TRUE)
+```
+
+Median:
+
+```{r 3. median steps per day, echo = TRUE}
+median(sumperday, na.rm = TRUE)
+```
+
+###Average daily activity Pattern
+
+In order to get a feel for the average daily activity pattern the Mean number of step were found for each 5 minute interval of the day.
+
+Below is a time series plot of this data.
+
+```{r 1. time series average steps, echo = TRUE}
+comp<-complete.cases(activity)
+completeAct<-activity[comp,]
+
+meanperint<-tapply(completeAct$steps,completeAct$interval,mean)
+
+plot(names(meanperint),meanperint,type="l", xlab = "Interval", ylab = "Steps", main = "Mean Steps per 5 Minute Interval")
+```
+
+The five minute interval with the maximum mean steps is:
+
+```{r 2. Max steps per day, echo = TRUE}
+m<-max(meanperint)
+
+as.numeric(names(meanperint[meanperint == m]))
+
+```
+
+If you look at the graph above that looks correct.
+
+###Impunting missing values.
+
+Next a value is selected to use to replace the missing step counts.
+
+First the number of records with missing values was calculated.
+
+```{r 1. Calc missing rows, echo = TRUE}
+a<-nrow(activity)
+c<-nrow(completeAct)
+missingcnt<-a-c
+missingcnt
+```
+
+Next the difference in using the median versus the mean as a substitute value was examined.
+
+
+```{r 3. Fill in missing values, echo = TRUE}
+
+medperint<-tapply(completeAct$steps,completeAct$interval,median)
+
+activity2<-activity
+medianAct<-cbind(names(medperint),medperint)
+names(medianAct)<-c("interval","medSteps")
+
+activity2$steps[is.na(activity$steps)==TRUE]<- median(activity$steps[is.na(activity$steps)==FALSE])
+
+
+activity3<-activity
+meanAct<-cbind(names(meanperint),meanperint)
+names(meanAct)<-c("interval","meanSteps")
+
+activity3$steps[is.na(activity$steps)==TRUE]<- mean(activity$steps[is.na(activity$steps)==FALSE])
+
+
+```
+
+The graphs below show that using the median introduces more skewdness thanusing the mean.  For the reason the mean was used as the replacement value.
+
+```{r 4. hist of steps take per day, echo = TRUE}
+par(mfrow = c(2,1))
+sumperday2<-tapply(activity2$steps,activity2$date,sum)
+sumperday3<-tapply(activity3$steps,activity3$date,sum)
+
+hist(sumperday2, main = "Total Steps per Day - Median used for Missing Values",xlab = "Total Steps")
+hist(sumperday3, main = "Total Steps per Day - Mean used for Missing Values",xlab = "Total Steps")
+```
+
+The mean and median for the new data set using the mean as the replacement for missing values were then found.
+
+```{r 4. Finding the mean and Median, echo = TRUE}
 
 
 
-## What is mean total number of steps taken per day?
+mean(sumperday3)
 
 
-
-## What is the average daily activity pattern?
-
+median(sumperday3)
 
 
-## Imputing missing values
+```
+
+###Differences between weekday and weekends?
+
+In order to see the difference between the pattern in the number of steps across the day between weekends and weekdays a factor was created to indicate which of these two categories the day fell into.
+
+```{r 1. Create new factor, echo = TRUE}
+activity2$daycat<-ifelse(wday(activity2$date) %in% c(1,7),"weekend","weekday")
+activity2$daycat<-as.factor(activity2$daycat)
 
 
+meanweekday<-tapply(activity2$steps[activity2$daycat=="weekday"],activity2$interval[activity2$daycat=="weekday"],mean)
+meanweekend<-tapply(activity2$steps[activity2$daycat=="weekend"],activity2$interval[activity2$daycat=="weekend"],mean)
 
-## Are there differences in activity patterns between weekdays and weekends?
+```
+
+The time series plots below show that the Mean number of steps appears to remain higher through out the day on the weekends than it does through out the week.  This results seems reasonable if the person who's activity is beign measured works during the week in an office environment.
+
+```{r 2. median steps per day, echo = TRUE}
+par(mfrow = c(2,1))
+
+plot(names(meanweekday),meanweekday,xlab="5 Minute Interval",ylab = "Mean Steps",main="Weekday Activity",type="l")
+
+plot(names(meanweekend),meanweekend,xlab="5 Minute Interval",ylab = "Mean Steps",main="Weekend Activity",type="l")
+
+```
